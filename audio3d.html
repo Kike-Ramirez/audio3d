@@ -30,9 +30,8 @@
 	<body>
 
 		<div id="info">
-			<a href="http://threejs.org" target="_blank">three.js</a> - webgl 3d sounds example -
-			by <a href="http://www.fullsix.es" target="_blank">fullsix Innovation</a> <br/><br/>
-			navigate with WASD / arrows / mouse
+			<a href="http://www.fullsix.es" target="_blank">Fullsix Innovation</a> - webgl / 3d audio example <br/><br/>
+			Use headphones!! Navigate using mouse and cursors...
 		</div>
 
 
@@ -46,12 +45,14 @@
 
 		<script src="dat.gui.min.js"></script>
 
+		<script src="stats.min.js"></script>
+
 		<script>
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 			var container;
 			var camera, controls, scene, renderer;
 			var light, pointLight;
-			var mesh;
+			var mesh, mesh1;
 			var material_sphere1, material_sphere2;
 			var analyser1, analyser2, analyser3;
 			var clock = new THREE.Clock();
@@ -67,18 +68,19 @@
 				scene.fog = new THREE.FogExp2( 0x000000, 0.0025 );
 				light = new THREE.DirectionalLight( 0xffffff );
 				light.position.set( 0, 0.5, 1 ).normalize();
+				light.castShadow = true;
 				scene.add( light );
-				var sphere = new THREE.SphereGeometry( 20, 32, 16 );
+				var sphere = new THREE.SphereGeometry( 20, 64, 64 );
 				material_sphere1 = new THREE.MeshPhongMaterial( { color: 0xbbaa00, shading: THREE.FlatShading, shininess: 0 } );
 				material_sphere2 = new THREE.MeshPhongMaterial( { color: 0xff2200, shading: THREE.FlatShading, shininess: 0 } );
 				material_sphere3 = new THREE.MeshPhongMaterial( { color: 0x6622aa, shading: THREE.FlatShading, shininess: 0 } );
 				// sound spheres
 				var audioLoader = new THREE.AudioLoader();
-				var mesh1 = new THREE.Mesh( sphere, material_sphere1 );
+				mesh1 = new THREE.Mesh( sphere, material_sphere1 );
 				mesh1.position.set( -250, 30, 0 );
 				scene.add( mesh1 );
 				var sound1 = new THREE.PositionalAudio( listener );
-				audioLoader.load( 'sounds/358232_j_s_song.ogg', function( buffer ) {
+				audioLoader.load( 'sounds/bells_poe_alg.ogg', function( buffer ) {
 					sound1.setBuffer( buffer );
 					sound1.setRefDistance( 20 );
 					sound1.play();
@@ -89,7 +91,7 @@
 				mesh2.position.set( 250, 30, 0 );
 				scene.add( mesh2 );
 				var sound2 = new THREE.PositionalAudio( listener );
-				audioLoader.load( 'sounds/376737_Skullbeatz___Bad_Cat_Maste.ogg', function( buffer ) {
+				audioLoader.load( 'sounds/bells_poe_ph.ogg', function( buffer ) {
 					sound2.setBuffer( buffer );
 					sound2.setRefDistance( 20 );
 					sound2.play();
@@ -100,14 +102,12 @@
 				mesh3.position.set( 0, 30, -250 );
 				scene.add( mesh3 );
 				var sound3 = new THREE.PositionalAudio( listener );
-				var oscillator = listener.context.createOscillator();
-				oscillator.type = 'sine';
-				oscillator.frequency.value = 144;
-				oscillator.start(0);
-				sound3.setNodeSource(oscillator);
-				sound3.setRefDistance( 20 );
-				sound3.setVolume(0.5);
-				mesh3.add(sound3);
+				audioLoader.load( 'sounds/bells_poe_jcm.ogg', function( buffer ) {
+					sound3.setBuffer( buffer );
+					sound3.setRefDistance( 20 );
+					sound3.play();
+				});
+				mesh3.add( sound3 );
 				// analysers
 				analyser1 = new THREE.AudioAnalyser( sound1, 32 );
 				analyser2 = new THREE.AudioAnalyser( sound2, 32 );
@@ -121,10 +121,13 @@
 					sound4.play();
 				});
 				// ground
-				var helper = new THREE.GridHelper( 1000, 10, 0x444444, 0x444444 );
-				helper.position.y = 0.1;
-				scene.add( helper );
-				//
+				var geometry = new THREE.PlaneGeometry( 100000, 100000, 2 );
+				var material = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide} );
+				var plane = new THREE.Mesh( geometry, material );
+				plane.position.set( 0, 0, 0 );
+				plane.rotation.x = Math.PI/2;
+				scene.add( plane );
+
     			var SoundControls = function() {
 					   this.master = listener.getMasterVolume();
 					   this.firstSphere =  sound1.getVolume();
@@ -132,13 +135,9 @@
 					   this.thirdSphere = sound3.getVolume();
 					   this.Ambient =  sound4.getVolume();
 				};
-				var GeneratorControls = function() {
-					   this.frequency = oscillator.frequency.value;
-					   this.wavetype = oscillator.type;
-				};
+
       			var gui = new dat.GUI();
 				var soundControls = new SoundControls();
-				var generatorControls = new GeneratorControls();
 				var volumeFolder = gui.addFolder('sound volume');
 				var generatorFolder = gui.addFolder('sound generator');
 				volumeFolder.add(soundControls, 'master').min(0.0).max(1.0).step(0.01).onChange(function() {
@@ -157,18 +156,17 @@
 					sound4.setVolume(soundControls.Ambient);
 				});
 				volumeFolder.open();
-				generatorFolder.add(generatorControls, 'frequency').min(50.0).max(5000.0).step(1.0).onChange(function() {
-					oscillator.frequency.value = generatorControls.frequency;
-				});
-				generatorFolder.add(generatorControls, 'wavetype', ['sine', 'square', 'sawtooth', 'triangle']).onChange(function() {
-					oscillator.type = generatorControls.wavetype;
-				});
+				
 				generatorFolder.open();
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.innerHTML = "";
 				container.appendChild( renderer.domElement );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
 				//
 				controls = new THREE.FirstPersonControls( camera, renderer.domElement );
 				controls.movementSpeed = 70;
@@ -193,6 +191,11 @@
 				material_sphere1.emissive.b = analyser1.getAverageFrequency() / 256;
 				material_sphere2.emissive.b = analyser2.getAverageFrequency() / 256;
 				material_sphere3.emissive.b = analyser3.getAverageFrequency() / 256;
+
+				mesh1.position.set( 200 * Math.sin(clock.getElapsedTime()) , 30, 200 * Math.cos(clock.getElapsedTime()) );
+
+				stats.update();
+
 				renderer.render( scene, camera );
 			}
 		</script>
